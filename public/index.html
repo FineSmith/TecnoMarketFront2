@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TecnoMarket - Tienda de Tecnología y Electrónica</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <!-- Encabezado y Navegación -->
+  <header>
+    <div class="header-container">
+      <div class="logo">
+        <span class="logo-icon">⚡</span> Tecno<span>Market</span>
+      </div>
+      <nav>
+        <ul>
+          <li><a href="#inicio">Inicio</a></li>
+          <li><a href="#destacados">Destacados</a></li>
+          <li><a href="#catalogo">Catálogo</a></li>
+        </ul>
+      </nav>
+      <div class="header-actions">
+        <button id="btn-abrir-carrito" class="btn-carrito" title="Ver Carrito">
+          🛒 <span id="contador-carrito" class="badge-carrito">0</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Sección Hero / Inicio -->
+  <section id="inicio" class="hero">
+    <div class="hero-content">
+      <span class="badge-tag">Innovación y Rendimiento</span>
+      <h1>Lo último en Hardware y Tecnología</h1>
+      <p>Laptops, procesadores, tarjetas gráficas y componentes de alto rendimiento al mejor precio del mercado.</p>
+      <a href="#catalogo" class="btn-hero">Explorar Catálogo</a>
+    </div>
+  </section>
+
+  <main class="main-container">
+
+    <!-- Sección de Búsqueda y Filtros -->
+    <section id="filtros" class="filtros-section">
+      <div class="filtro-item buscador">
+        <input type="text" id="input-busqueda" placeholder="Buscar por producto o código (ej. Ryzen, P001)...">
+      </div>
+
+      <div class="filtro-item">
+        <select id="select-categoria">
+          <option value="">Todas las Categorías</option>
+          <!-- Opciones dinámicas -->
+        </select>
+      </div>
+
+      <div class="filtro-item">
+        <select id="select-orden">
+          <option value="">Ordenar por precio</option>
+          <option value="asc">Precio: Menor a Mayor</option>
+          <option value="desc">Precio: Mayor a Menor</option>
+        </select>
+      </div>
+
+      <div class="filtro-item">
+        <select id="select-stock">
+          <option value="">Disponibilidad</option>
+          <option value="en-stock">Solo en Stock (Disponible)</option>
+        </select>
+      </div>
+    </section>
+
+    <!-- Indicador de Carga y Mensajes -->
+    <div id="estado-carga" class="estado-carga">
+      <div class="spinner"></div>
+      <p>Conectando con el servidor de Render y cargando productos...</p>
+    </div>
+
+    <div id="mensaje-error" class="mensaje-error oculto">
+      <p>⚠️ No se pudo conectar con la API de TecnoMarket. Recuerda que la instancia gratuita de Render puede tardar unos segundos en despertar.</p>
+      <button id="btn-reintentar" class="btn-secundario">Reintentar Conexión</button>
+    </div>
+
+    <!-- Sección Productos Destacados -->
+    <section id="destacados" class="seccion-destacados">
+      <div class="seccion-header">
+        <h2>🔥 Productos Destacados</h2>
+        <p>Los componentes más solicitados por nuestra comunidad</p>
+      </div>
+      <div id="destacados-container" class="grid-productos">
+        <!-- Render dinámico desde TS -->
+      </div>
+    </section>
+
+    <hr class="separador">
+
+    <!-- Sección Catálogo General -->
+    <section id="catalogo" class="seccion-catalogo">
+      <div class="seccion-header">
+        <h2>💻 Catálogo General</h2>
+        <p>Explora todo nuestro inventario disponible</p>
+      </div>
+      <div id="catalogo-container" class="grid-productos">
+        <!-- Render dinámico desde TS -->
+      </div>
+      <div id="sin-resultados" class="sin-resultados oculto">
+        <p>🔍 No se encontraron productos que coincidan con los criterios de búsqueda.</p>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Ventana Modal de Detalle de Producto -->
+  <div id="modal-detalle" class="modal-backdrop oculto">
+    <div class="modal-contenido">
+      <button id="btn-cerrar-modal" class="btn-cerrar">&times;</button>
+      <div class="modal-grid">
+        <div class="modal-imagen-col">
+          <img id="modal-img" src="" alt="Producto">
+        </div>
+        <div class="modal-info-col">
+          <span id="modal-categoria" class="tag-categoria"></span>
+          <h2 id="modal-nombre"></h2>
+          <p class="codigo-producto">Código: <span id="modal-codigo"></span></p>
+          <div class="modal-precio-box">
+            <span class="moneda">S/</span>
+            <span id="modal-precio" class="precio-valor"></span>
+          </div>
+          <div class="modal-stock-box">
+            <span>Disponibilidad:</span>
+            <span id="modal-stock" class="badge-stock"></span>
+          </div>
+          <div class="modal-descripcion">
+            <h4>Especificaciones / Resumen:</h4>
+            <p id="modal-desc"></p>
+          </div>
+          <button id="modal-btn-agregar" class="btn-primario btn-full">Agregar al Carrito 🛒</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Drawer / Modal de Carrito de Compras -->
+  <div id="drawer-carrito" class="carrito-drawer oculto">
+    <div class="carrito-overlay" id="carrito-overlay"></div>
+    <div class="carrito-panel">
+      <div class="carrito-header">
+        <h3>🛒 Carrito de Compras</h3>
+        <button id="btn-cerrar-carrito" class="btn-cerrar">&times;</button>
+      </div>
+      <div id="carrito-items" class="carrito-body">
+        <!-- Items dinámicos -->
+      </div>
+      <div class="carrito-footer">
+        <div class="carrito-total-fila">
+          <span>Total a Pagar:</span>
+          <span id="carrito-total">S/ 0.00</span>
+        </div>
+        <button id="btn-comprar" class="btn-primario btn-full">Finalizar Pedido</button>
+        <button id="btn-vaciar-carrito" class="btn-enlace">Vaciar Carrito</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pie de página -->
+  <footer>
+    <div class="footer-container">
+      <p>&copy; 2026 TecnoMarket - Universidad Continental. Todos los derechos reservados.</p>
+      <p class="footer-sub">Desarrollado para la asignatura de Desarrollo de Aplicaciones Web.</p>
+    </div>
+  </footer>
+
+  <!-- Script compilado de TypeScript -->
+  <script src="./dist/app.js"></script>
+</body>
+</html>

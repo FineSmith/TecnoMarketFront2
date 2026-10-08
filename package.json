@@ -1,0 +1,13 @@
+{
+  "name": "tecnomarket-frontend",
+  "version": "1.0.0",
+  "description": "Frontend interactivo para la tienda virtual TecnoMarket",
+  "main": "dist/app.js",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}
