@@ -25,6 +25,7 @@
         </ul>
       </nav>
       <div class="header-actions">
+        <button id="btn-ver-pedidos" class="btn-secundario" style="margin-right: 8px;">📦 Pedidos</button>
         <button id="btn-abrir-carrito" class="btn-carrito" title="Ver Carrito">
           🛒 <span id="contador-carrito" class="badge-carrito">0</span>
         </button>
@@ -41,7 +42,16 @@
       <a href="#catalogo" class="btn-hero">Explorar Catálogo</a>
     </div>
   </section>
-
+<!-- Sección de Promociones desde /api/promociones -->
+  <section id="promociones" class="seccion-promociones" style="max-width: 1200px; margin: 1.5rem auto 0; padding: 0 1.5rem;">
+    <div class="seccion-header">
+      <h2>🎉 Promociones Activas</h2>
+      <p>Campañas comerciales obtenidas en tiempo real desde la API</p>
+    </div>
+    <div id="promociones-container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem;">
+      <!-- Render dinámico desde TS -->
+    </div>
+  </section>
   <main class="main-container">
 
     <!-- Sección de Búsqueda y Filtros -->
@@ -164,7 +174,7 @@
       </div>
     </div>
   </div>
-
+  
   <!-- Pie de página -->
   <footer>
     <div class="footer-container">
@@ -172,7 +182,15 @@
       <p class="footer-sub">Desarrollado para la asignatura de Desarrollo de Aplicaciones Web.</p>
     </div>
   </footer>
-
+  <div id="modal-pedidos" class="modal-backdrop oculto">
+    <div class="modal-contenido" style="padding: 2rem; max-width: 500px;">
+      <button id="btn-cerrar-pedidos" class="btn-cerrar">&times;</button>
+      <h3 style="margin-bottom: 1rem;">📦 Registro de Pedidos (API)</h3>
+      <div id="pedidos-lista" style="display: flex; flex-direction: column; gap: 10px;">
+        <!-- Render dinámico desde TS -->
+      </div>
+    </div>
+  </div>
   <!-- Script compilado de TypeScript -->
   <script src="./dist/app.js"></script>
 </body>

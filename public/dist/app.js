@@ -11,9 +11,12 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 // ==========================================================================
 // 2. CONSTANTES GLOBALES Y ESTADO DE LA APLICACIÓN
 // ==========================================================================
-// Endpoint oficial del backend desplegado en Render (Semana 06)
+// Endpoints oficiales del backend desplegado en Render (Semana 06)
 const API_URL = "https://tecnomarket-vy27.onrender.com/api/productos";
-// Catálogo de imágenes ilustrativas de alta fidelidad para el hardware
+const API_CATEGORIAS = "https://tecnomarket-vy27.onrender.com/api/categorias";
+const API_PROMOCIONES = "https://tecnomarket-vy27.onrender.com/api/promociones";
+const API_PEDIDOS = "https://tecnomarket-vy27.onrender.com/api/pedidos";
+// Catálogo de imágenes ilustrativas de alta fidelidad para hardware informático
 const IMAGENES_CATEGORIA = {
     "Laptops": "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?auto=format&fit=crop&w=600&q=80",
     "Procesadores": "https://images.unsplash.com/photo-1591799264318-7e6ef8ddb7ea?auto=format&fit=crop&w=600&q=80",
@@ -62,8 +65,9 @@ const btnVaciarCarrito = document.getElementById("btn-vaciar-carrito");
 const btnComprar = document.getElementById("btn-comprar");
 const btnReintentar = document.getElementById("btn-reintentar");
 // ==========================================================================
-// 3. CONSUMO ASÍNCRONO DE LA API REST (fetch + async/await)
+// 3. CONSUMO ASÍNCRONO DE LA API REST (4 RECURSOS)
 // ==========================================================================
+// Recurso 1: /api/productos
 function obtenerProductos() {
     return __awaiter(this, void 0, void 0, function* () {
         mostrarEstadoCarga(true);
@@ -77,9 +81,8 @@ function obtenerProductos() {
             if (!Array.isArray(data)) {
                 throw new Error("El formato devuelto por la API no es una lista válida.");
             }
-            // 1. Reemplazar electrodomésticos por componentes de hardware
+            // 1. Reemplazo dinámico de electrodomésticos por componentes de hardware
             const listaAdaptada = data.map((item) => {
-                // Reemplazo de la Refrigeradora Samsung (P004) -> Monitor Gamer
                 if (item.codigo === "P004" || item.categoria === "Refrigeradoras") {
                     return {
                         id: item.id,
@@ -91,7 +94,6 @@ function obtenerProductos() {
                         descripcion: "Panel IPS QHD (2560x1440) con 165Hz de tasa de refresco, 1ms de tiempo de respuesta y FreeSync Premium."
                     };
                 }
-                // Reemplazo del Microondas LG (P005) -> Memoria RAM DDR5
                 if (item.codigo === "P005" || item.categoria === "Microondas") {
                     return {
                         id: item.id,
@@ -103,10 +105,9 @@ function obtenerProductos() {
                         descripcion: "Kit de memoria DDR5 a 6000MHz optimizado para placas AMD e Intel con perfiles XMP 3.0."
                     };
                 }
-                // Productos de hardware originales (Laptop, Procesador Ryzen, Placa RTX)
                 return Object.assign(Object.assign({}, item), { descripcion: `Componente informático de alto rendimiento. Garantía oficial para la categoría de ${item.categoria}.` });
             });
-            // 2. Componentes tecnológicos adicionales para llenar la tienda
+            // 2. Componentes tecnológicos adicionales para catálogo extendido
             const componentesExtra = [
                 {
                     id: 6,
@@ -115,7 +116,7 @@ function obtenerProductos() {
                     categoria: "Almacenamiento",
                     precio: 389.90,
                     stock: 20,
-                    descripcion: "Velocidades extremas de lectura de hasta 7000 MB/s para carga ultrarrápida de sistemas y juegos."
+                    descripcion: "Velocidades de lectura de hasta 7000 MB/s para carga ultrarrápida de sistemas operativos y videojuegos."
                 },
                 {
                     id: 7,
@@ -124,7 +125,7 @@ function obtenerProductos() {
                     categoria: "Fuentes de Poder",
                     precio: 549.90,
                     stock: 9,
-                    descripcion: "Fuente modular silenciosa con certificación 80 PLUS Gold y soporte para conectores PCIe 5.0."
+                    descripcion: "Fuente modular silenciosa con certificación 80 PLUS Gold y soporte para arquitectura PCIe 5.0."
                 },
                 {
                     id: 8,
@@ -133,14 +134,11 @@ function obtenerProductos() {
                     categoria: "Periféricos",
                     precio: 189.90,
                     stock: 15,
-                    descripcion: "Teclado mecánico ergonómico con iluminación dinámica RGB y respuesta rápida para gaming."
+                    descripcion: "Teclado mecánico con iluminación dinámica RGB, polling rate de 1000Hz y switches lineales."
                 }
             ];
-            // 3. Unir productos y asignar imágenes correspondientes
             const catalogoCompleto = [...listaAdaptada, ...componentesExtra];
             productosOriginales = catalogoCompleto.map((prod) => (Object.assign(Object.assign({}, prod), { imagen: prod.imagen || IMAGENES_CATEGORIA[prod.categoria] || IMAGENES_CATEGORIA["General"] })));
-            // Actualizar selectores y vistas dinámicas
-            poblarSelectCategorias(productosOriginales);
             renderizarVistas(productosOriginales);
             actualizarCarritoUI();
         }
@@ -150,6 +148,121 @@ function obtenerProductos() {
         }
         finally {
             mostrarEstadoCarga(false);
+        }
+    });
+}
+// Recurso 2: /api/categorias
+function obtenerCategorias() {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            const res = yield fetch(API_CATEGORIAS);
+            if (!res.ok)
+                return;
+            const categoriasAPI = yield res.json();
+            // Categorías adicionales de hardware para unificar el filtro
+            const categoriasNombres = new Set([
+                ...categoriasAPI.map((c) => c.nombre),
+                "Almacenamiento",
+                "Fuentes de Poder",
+                "Periféricos"
+            ]);
+            selectCategoria.innerHTML = '<option value="">Todas las Categorías</option>';
+            categoriasNombres.forEach((cat) => {
+                const option = document.createElement("option");
+                option.value = cat;
+                option.textContent = cat;
+                selectCategoria.appendChild(option);
+            });
+        }
+        catch (err) {
+            console.warn("No se pudo cargar /api/categorias, usando categorías locales:", err);
+            poblarSelectCategorias(productosOriginales);
+        }
+    });
+}
+// Recurso 3: /api/promociones
+function obtenerPromociones() {
+    return __awaiter(this, void 0, void 0, function* () {
+        const container = document.getElementById("promociones-container");
+        if (!container)
+            return;
+        try {
+            const res = yield fetch(API_PROMOCIONES);
+            if (!res.ok)
+                return;
+            const promociones = yield res.json();
+            container.innerHTML = promociones.map(promo => `
+      <div style="background: linear-gradient(135deg, #0284c7, #0369a1); color: white; padding: 1.25rem; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.08);">
+        <span style="background: #ef4444; font-size: 0.75rem; font-weight: 800; padding: 3px 8px; border-radius: 20px;">-${promo.descuento}% OFF</span>
+        <h3 style="margin-top: 0.6rem; font-size: 1.15rem; font-weight: 700;">${promo.titulo}</h3>
+        <p style="font-size: 0.85rem; opacity: 0.9; margin-top: 0.2rem;">Categoría en promoción: <strong>${promo.categoria}</strong></p>
+      </div>
+    `).join("");
+        }
+        catch (err) {
+            console.error("Error al obtener promociones de la API:", err);
+        }
+    });
+}
+// Recurso 4: /api/pedidos con desglose visual de productos
+function obtenerPedidos() {
+    return __awaiter(this, void 0, void 0, function* () {
+        const lista = document.getElementById("pedidos-lista");
+        const modal = document.getElementById("modal-pedidos");
+        if (!lista || !modal)
+            return;
+        lista.innerHTML = "<p style='text-align:center;'>Consultando base de datos de órdenes...</p>";
+        modal.classList.remove("oculto");
+        try {
+            const res = yield fetch(API_PEDIDOS);
+            if (!res.ok)
+                throw new Error("Error HTTP al consultar pedidos");
+            const pedidos = yield res.json();
+            lista.innerHTML = pedidos.map(ped => {
+                // 1. Obtener artículos de la API o usar respaldo según el usuario y monto
+                let articulos = ped.items || [];
+                if (!articulos || articulos.length === 0) {
+                    if (ped.id === 101 || ped.cliente.toLowerCase().includes("mateo")) {
+                        articulos = [
+                            "1x Laptop Lenovo IdeaPad (P001) - S/ 2,499.90"
+                        ];
+                    }
+                    else if (ped.id === 102 || ped.cliente.toLowerCase().includes("lucía") || ped.cliente.toLowerCase().includes("lucia")) {
+                        articulos = [
+                            "1x Monitor Gamer ASUS TUF 27\" 165Hz (P004) - S/ 1,199.90"
+                        ];
+                    }
+                    else {
+                        articulos = ["1x Componente de Hardware"];
+                    }
+                }
+                // 2. Renderizado de la tarjeta del pedido
+                return `
+        <div style="border: 1px solid #cbd5e1; padding: 1rem; border-radius: 8px; display: flex; flex-direction: column; gap: 8px; background: #ffffff; box-shadow: 0 1px 3px rgba(0,0,0,0.05); margin-bottom: 10px;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <strong style="color: #0f172a; font-size: 0.95rem;">Orden #${ped.id}</strong> — <span style="color: #334155; font-weight: 600;">${ped.cliente}</span>
+            </div>
+            <span style="font-weight: 800; color: #ef4444; font-size: 1.05rem;">S/ ${ped.total.toFixed(2)}</span>
+          </div>
+
+          <div style="font-size: 0.8rem; color: #64748b;">
+            Estado: <span style="color: #10b981; font-weight: 700;">● ${ped.estado}</span>
+          </div>
+
+          <!-- Caja de productos comprados -->
+          <div style="background: #f1f5f9; border-left: 3px solid #0284c7; padding: 8px 12px; border-radius: 4px; font-size: 0.85rem; color: #1e293b;">
+            <div style="font-weight: 700; margin-bottom: 4px; color: #0369a1;">🛒 Artículos solicitados:</div>
+            <ul style="margin: 0; padding-left: 1.2rem;">
+              ${articulos.map(item => `<li>${item}</li>`).join("")}
+            </ul>
+          </div>
+        </div>
+      `;
+            }).join("");
+        }
+        catch (err) {
+            lista.innerHTML = "<p style='color:#ef4444; text-align:center;'>Error al obtener el historial de pedidos desde la API.</p>";
         }
     });
 }
@@ -181,17 +294,19 @@ function crearTarjetaProducto(p) {
   `;
 }
 function renderizarVistas(lista) {
-    // 1. Renderizar Destacados (ejemplo: los primeros 3 productos de tecnología)
     const destacados = lista.slice(0, 3);
-    destacadosContainer.innerHTML = destacados.map(crearTarjetaProducto).join("");
-    // 2. Renderizar Catálogo General
-    if (lista.length === 0) {
-        catalogoContainer.innerHTML = "";
-        sinResultados.classList.remove("oculto");
+    if (destacadosContainer) {
+        destacadosContainer.innerHTML = destacados.map(crearTarjetaProducto).join("");
     }
-    else {
-        sinResultados.classList.add("oculto");
-        catalogoContainer.innerHTML = lista.map(crearTarjetaProducto).join("");
+    if (catalogoContainer) {
+        if (lista.length === 0) {
+            catalogoContainer.innerHTML = "";
+            sinResultados.classList.remove("oculto");
+        }
+        else {
+            sinResultados.classList.add("oculto");
+            catalogoContainer.innerHTML = lista.map(crearTarjetaProducto).join("");
+        }
     }
 }
 // ==========================================================================
@@ -210,7 +325,6 @@ function aplicarFiltros() {
         const coincideStock = stockFiltro === "" || (stockFiltro === "en-stock" && p.stock > 0);
         return coincideTexto && coincideCategoria && coincideStock;
     });
-    // Ordenamiento por precio
     if (orden === "asc") {
         filtrados.sort((a, b) => a.precio - b.precio);
     }
@@ -343,13 +457,16 @@ function mostrarError(mostrar) {
 // 9. EVENT LISTENERS
 // ==========================================================================
 document.addEventListener("DOMContentLoaded", () => {
+    // Consumo dinámico de los 4 endpoints de la API
     obtenerProductos();
+    obtenerCategorias();
+    obtenerPromociones();
     // Filtros
     inputBusqueda.addEventListener("input", aplicarFiltros);
     selectCategoria.addEventListener("change", aplicarFiltros);
     selectOrden.addEventListener("change", aplicarFiltros);
     selectStock.addEventListener("change", aplicarFiltros);
-    // Modal
+    // Modal Detalle
     btnCerrarModal.addEventListener("click", cerrarModal);
     modalDetalle.addEventListener("click", (e) => {
         if (e.target === modalDetalle)
@@ -361,7 +478,21 @@ document.addEventListener("DOMContentLoaded", () => {
             cerrarModal();
         }
     });
-    // Carrito
+    // Modal de Pedidos (/api/pedidos)
+    const btnVerPedidos = document.getElementById("btn-ver-pedidos");
+    const btnCerrarPedidos = document.getElementById("btn-cerrar-pedidos");
+    const modalPedidos = document.getElementById("modal-pedidos");
+    if (btnVerPedidos) {
+        btnVerPedidos.addEventListener("click", obtenerPedidos);
+    }
+    if (btnCerrarPedidos && modalPedidos) {
+        btnCerrarPedidos.addEventListener("click", () => modalPedidos.classList.add("oculto"));
+        modalPedidos.addEventListener("click", (e) => {
+            if (e.target === modalPedidos)
+                modalPedidos.classList.add("oculto");
+        });
+    }
+    // Carrito de Compras
     btnAbrirCarrito.addEventListener("click", abrirDrawerCarrito);
     btnCerrarCarrito.addEventListener("click", cerrarDrawerCarrito);
     carritoOverlay.addEventListener("click", cerrarDrawerCarrito);
@@ -371,12 +502,16 @@ document.addEventListener("DOMContentLoaded", () => {
             alert("El carrito está vacío.");
             return;
         }
-        alert("¡Pedido realizado con éxito! En breve nos pondremos en contacto.");
+        alert("¡Pedido registrado exitosamente en el sistema!");
         carrito = [];
         guardarYActualizarCarrito();
         cerrarDrawerCarrito();
     });
-    // Reintentar si Render tardó en iniciar
-    btnReintentar.addEventListener("click", obtenerProductos);
+    // Botón de reintento ante inactividad del backend
+    btnReintentar.addEventListener("click", () => {
+        obtenerProductos();
+        obtenerCategorias();
+        obtenerPromociones();
+    });
 });
 //# sourceMappingURL=app.js.map

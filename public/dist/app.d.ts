@@ -12,7 +12,28 @@ interface ItemCarrito {
     producto: Producto;
     cantidad: number;
 }
+interface Categoria {
+    id: number;
+    nombre: string;
+    descripcion: string;
+}
+interface Promocion {
+    id: number;
+    titulo: string;
+    descuento: number;
+    categoria: string;
+}
+interface Pedido {
+    id: number;
+    cliente: string;
+    items?: string[];
+    total: number;
+    estado: string;
+}
 declare const API_URL = "https://tecnomarket-vy27.onrender.com/api/productos";
+declare const API_CATEGORIAS = "https://tecnomarket-vy27.onrender.com/api/categorias";
+declare const API_PROMOCIONES = "https://tecnomarket-vy27.onrender.com/api/promociones";
+declare const API_PEDIDOS = "https://tecnomarket-vy27.onrender.com/api/pedidos";
 declare const IMAGENES_CATEGORIA: Record<string, string>;
 declare let productosOriginales: Producto[];
 declare let carrito: ItemCarrito[];
@@ -47,6 +68,9 @@ declare const btnVaciarCarrito: HTMLButtonElement;
 declare const btnComprar: HTMLButtonElement;
 declare const btnReintentar: HTMLButtonElement;
 declare function obtenerProductos(): Promise<void>;
+declare function obtenerCategorias(): Promise<void>;
+declare function obtenerPromociones(): Promise<void>;
+declare function obtenerPedidos(): Promise<void>;
 declare function crearTarjetaProducto(p: Producto): string;
 declare function renderizarVistas(lista: Producto[]): void;
 declare function aplicarFiltros(): void;
