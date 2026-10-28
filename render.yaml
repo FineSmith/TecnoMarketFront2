@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: tecnomarket-frontend
+    runtime: static
+    buildCommand: npm ci && npm run build
+    staticPublishPath: ./public
