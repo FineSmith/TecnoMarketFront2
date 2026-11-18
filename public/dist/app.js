@@ -4,10 +4,13 @@
 // ============================================================================
 const API_BASE_URL = 'https://tecnomarket-vy27.onrender.com';
 // Pega aquí los valores de tu nuevo proyecto Firebase ("tecnomarket-pwa")
-const FIREBASE_CONFIG = {
-    projectId: 'tecnomarket-pwa',
-    apiKey: 'REEMPLAZAR_CON_TU_NUEVA_API_KEY',
-    authDomain: 'tecnomarket-pwa.firebaseapp.com'
+const firebaseConfig = {
+    apiKey: "AIzaSyBkpfK4KxVMlDhIv4kkBWfcgENZot1XhEA",
+    authDomain: "tecnomarket-pwa.firebaseapp.com",
+    projectId: "tecnomarket-pwa",
+    storageBucket: "tecnomarket-pwa.firebasestorage.app",
+    messagingSenderId: "219180933086",
+    appId: "1:219180933086:web:8bf8dcecfc8a90fa27074f"
 };
 // Estado de la aplicación con respaldo Offline en localStorage
 let productos = [];
@@ -348,7 +351,7 @@ function configurarPWA() {
     const textoConexion = document.getElementById('conexion-texto');
     const fbEstado = document.getElementById('firebase-estado');
     if (fbEstado) {
-        fbEstado.textContent = FIREBASE_CONFIG.projectId;
+        fbEstado.textContent = firebaseConfig.projectId;
     }
     // Detectar si ya corre como aplicación de escritorio instalada (Standalone)
     const esStandalone = window.matchMedia('(display-mode: standalone)').matches;

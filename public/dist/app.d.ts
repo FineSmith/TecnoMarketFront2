@@ -1,8 +1,11 @@
 declare const API_BASE_URL = "https://tecnomarket-vy27.onrender.com";
-declare const FIREBASE_CONFIG: {
-    projectId: string;
+declare const firebaseConfig: {
     apiKey: string;
     authDomain: string;
+    projectId: string;
+    storageBucket: string;
+    messagingSenderId: string;
+    appId: string;
 };
 interface Producto {
     id: number;
