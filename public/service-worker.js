@@ -9,8 +9,8 @@ const APP_SHELL = [
   './styles.css',
   './dist/app.js',
   './manifest.json',
-  './icons/icon-192.png',
-  './icons/icon-512.png'
+  './icons/icon-192.png.png',
+  './icons/icon-512.png.png'
 ];
 
 // 1. Instalación: precarga el App Shell en la caché estática

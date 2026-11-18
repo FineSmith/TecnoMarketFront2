@@ -358,6 +358,9 @@ function configurarPWA() {
     if (diagDisplay) {
         diagDisplay.textContent = esStandalone ? 'App de Escritorio (Standalone)' : 'Navegador Web';
     }
+    if (btnInstalar && !esStandalone) {
+        btnInstalar.style.display = 'inline-flex';
+    }
     // 1. Registro del Service Worker
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', async () => {
@@ -384,8 +387,10 @@ function configurarPWA() {
     });
     // 3. Disparar ventana nativa de instalación en escritorio
     btnInstalar?.addEventListener('click', async () => {
-        if (!deferredInstallPrompt)
+        if (!deferredInstallPrompt) {
+            mostrarToast('Abre el menú del navegador y selecciona “Instalar TecnoMarket” o “Agregar a pantalla de inicio”.');
             return;
+        }
         await deferredInstallPrompt.prompt();
         const { outcome } = await deferredInstallPrompt.userChoice;
         if (outcome === 'accepted') {
