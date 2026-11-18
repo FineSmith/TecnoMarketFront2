@@ -1,302 +1,538 @@
+// ============================================================================
+// TECNOMARKET PRO - FRONTEND TYPESCRIPT + RENDER API + FIREBASE + PWA INSTALLER
+// ============================================================================
+
+const API_BASE_URL = 'https://tecnomarket-vy27.onrender.com';
+
+// Pega aquí los valores de tu nuevo proyecto Firebase ("tecnomarket-pwa")
+const firebaseConfig = {
+  apiKey: "AIzaSyBkpfK4KxVMlDhIv4kkBWfcgENZot1XhEA",
+  authDomain: "tecnomarket-pwa.firebaseapp.com",
+  projectId: "tecnomarket-pwa",
+  storageBucket: "tecnomarket-pwa.firebasestorage.app",
+  messagingSenderId: "219180933086",
+  appId: "1:219180933086:web:8bf8dcecfc8a90fa27074f"
+};
+
 interface Producto {
-    id: number;
-    codigo: string;
-    nombre: string;
-    categoria: string;
-    marca: string;
-    modelo: string;
-    garantia: string;
-    precio: number;
-    stock: number;
-    descuento: number;
-    imagen: string;
-    descripcion: string;
+  id: number;
+  codigo: string;
+  nombre: string;
+  categoria: string;
+  precio: number;
+  stock: number;
 }
 
-const API_URL = "https://tecnomarket-vy27.onrender.com/api/productos";
-
-const form = document.getElementById("formProducto") as HTMLFormElement;
-const tabla = document.getElementById("tablaProductos") as HTMLTableSectionElement;
-const mensaje = document.getElementById("mensaje") as HTMLDivElement;
-const buscar = document.getElementById("buscar") as HTMLInputElement;
-const btnGuardar = document.getElementById("btnGuardar") as HTMLButtonElement;
-const btnCancelar = document.getElementById("btnCancelar") as HTMLButtonElement;
-const estadoCarga = document.getElementById("estadoCarga") as HTMLParagraphElement;
-const contador = document.getElementById("contador") as HTMLSpanElement;
-const tituloFormulario = document.getElementById("tituloFormulario") as HTMLHeadingElement;
-
-if (!form || !tabla || !mensaje || !buscar || !btnGuardar || !btnCancelar || !estadoCarga || !contador || !tituloFormulario) {
-    throw new Error("Faltan elementos del DOM. Revisa los ids del formulario en public/index.html.");
+interface Promocion {
+  id: number;
+  titulo: string;
+  descripcion: string;
+  descuentoPorcentaje: number;
 }
 
+interface ItemCarrito {
+  producto: Producto;
+  cantidad: number;
+}
+
+interface Pedido {
+  id: number;
+  cliente: string;
+  total: number;
+  fecha: string;
+  estado: string;
+}
+
+interface BeforeInstallPromptEvent extends Event {
+  readonly platforms: string[];
+  readonly userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
+  prompt(): Promise<void>;
+}
+
+// Estado de la aplicación con respaldo Offline en localStorage
 let productos: Producto[] = [];
-let idEdicion: number | null = null;
+let promociones: Promocion[] = [];
+let pedidos: Pedido[] = [];
+let carrito: ItemCarrito[] = [];
+let categoriaSeleccionada = 'Todas';
+let deferredInstallPrompt: BeforeInstallPromptEvent | null = null;
 
-function mostrarMensaje(texto: string, tipo: "ok" | "error" = "ok"): void {
-    mensaje.textContent = texto;
-    mensaje.classList.remove("ok", "error");
-    mensaje.classList.add(tipo);
+const SEED_PRODUCTOS: Producto[] = [
+  { id: 1, codigo: 'GPU-RTX4070', nombre: 'NVIDIA GeForce RTX 4070 Super 12GB', categoria: 'Tarjetas Gráficas', precio: 2890, stock: 8 },
+  { id: 2, codigo: 'CPU-RYZEN7', nombre: 'AMD Ryzen 7 7800X3D AM5', categoria: 'Procesadores', precio: 1750, stock: 12 },
+  { id: 3, codigo: 'SSD-NVME2T', nombre: 'Samsung 990 PRO 2TB PCIe 4.0 NVMe', categoria: 'Almacenamiento', precio: 720, stock: 20 },
+  { id: 4, codigo: 'PER-LOGIGPRO', nombre: 'Mouse Logitech G Pro X Superlight 2', categoria: 'Periféricos', precio: 540, stock: 15 },
+  { id: 5, codigo: 'LAP-ASUSROG', nombre: 'ASUS ROG Strix G16 i9 / RTX 4060', categoria: 'Laptops', precio: 6490, stock: 4 }
+];
+
+const SEED_PROMOCIONES: Promocion[] = [
+  { id: 1, titulo: 'Cyber Ingeniería Sistemas', descripcion: 'Descuento directo en procesadores AMD Ryzen y GPUs RTX.', descuentoPorcentaje: 15 },
+  { id: 2, titulo: 'Pack Upgrade Almacenamiento', descripcion: 'Unidades NVMe Gen4 con envío gratis e instalación.', descuentoPorcentaje: 10 }
+];
+
+// Utilidad de notificaciones Toast
+function mostrarToast(mensaje: string): void {
+  const container = document.getElementById('toast-container');
+  if (!container) return;
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  toast.textContent = mensaje;
+  container.appendChild(toast);
+  setTimeout(() => toast.remove(), 3400);
 }
 
-function limpiarMensaje(): void {
-    mensaje.textContent = "";
-    mensaje.classList.remove("ok", "error");
+// Persistencia local para soporte Offline
+function guardarCacheLocal(): void {
+  localStorage.setItem('tm_productos', JSON.stringify(productos));
+  localStorage.setItem('tm_pedidos', JSON.stringify(pedidos));
+  localStorage.setItem('tm_carrito', JSON.stringify(carrito));
 }
 
-async function solicitar(url: string, opciones: RequestInit = {}): Promise<any> {
-    try {
-        const respuesta = await fetch(url, {
-            ...opciones,
-            headers: {
-                ...(opciones.body ? { "Content-Type": "application/json" } : {}),
-                ...(opciones.headers || {})
-            }
-        });
+function cargarCacheLocal(): void {
+  const prodGuardados = localStorage.getItem('tm_productos');
+  const pedGuardados = localStorage.getItem('tm_pedidos');
+  const carGuardado = localStorage.getItem('tm_carrito');
 
-        if (!respuesta.ok) {
-            const texto = await respuesta.text().catch(() => "");
-            throw new Error(`Error HTTP ${respuesta.status}${texto ? `: ${texto}` : ""}`);
-        }
+  productos = prodGuardados ? JSON.parse(prodGuardados) : [...SEED_PRODUCTOS];
+  pedidos = pedGuardados ? JSON.parse(pedGuardados) : [];
+  carrito = carGuardado ? JSON.parse(carGuardado) : [];
+  promociones = [...SEED_PROMOCIONES];
+}
 
-        if (respuesta.status === 204) return null;
+// Sincronización con el Backend en Render
+async function sincronizarConBackend(): Promise<void> {
+  const lblLatencia = document.getElementById('api-latencia');
+  const lblSync = document.getElementById('diag-sync');
+  const inicio = performance.now();
 
-        const texto = await respuesta.text();
-        return texto ? JSON.parse(texto) : null;
-    } catch (error) {
-        if (error instanceof Error && error.message.startsWith("Error HTTP")) {
-            throw error;
-        }
-        throw new Error(
-            "No se pudo conectar con la API. Verifica la URL, que Render esté activo y la configuración de CORS."
-        );
+  try {
+    const resp = await fetch(`${API_BASE_URL}/api/productos`);
+    if (resp.ok) {
+      const data = await resp.json();
+      if (Array.isArray(data) && data.length > 0) {
+        productos = data;
+      }
+      const ms = Math.round(performance.now() - inicio);
+      if (lblLatencia) lblLatencia.textContent = `Online (${ms} ms)`;
+    } else {
+      if (lblLatencia) lblLatencia.textContent = 'Modo Caché';
     }
+  } catch {
+    if (lblLatencia) lblLatencia.textContent = 'Respaldo Local';
+  }
+
+  if (lblSync) {
+    lblSync.textContent = new Date().toLocaleTimeString();
+  }
+  guardarCacheLocal();
+  actualizarKPIs();
+  renderizarProductos();
 }
 
-// GET: Consultar todos los productos
-async function cargarProductos(): Promise<boolean> {
-    estadoCarga.textContent = "Consultando API...";
-    try {
-        const datos = await solicitar(API_URL);
-        productos = Array.isArray(datos) ? datos : [];
-        renderizarTabla();
-        estadoCarga.textContent = "Datos obtenidos desde la API.";
-        return true;
-    } catch (error: any) {
-        estadoCarga.textContent = error.message;
-        tabla.innerHTML = '<tr><td colspan="12">No se pudo cargar el inventario.</td></tr>';
-        contador.textContent = "";
-        mostrarMensaje(error.message, "error");
-        return false;
-    }
+// Actualizar tarjetas KPI superiores
+function actualizarKPIs(): void {
+  const elProd = document.getElementById('kpi-total-productos');
+  const elStock = document.getElementById('kpi-total-stock');
+  const elValor = document.getElementById('kpi-valor-inventario');
+  const elPedidos = document.getElementById('kpi-total-pedidos');
+
+  const totalStock = productos.reduce((acc, p) => acc + Number(p.stock || 0), 0);
+  const valorTotal = productos.reduce((acc, p) => acc + Number(p.precio || 0) * Number(p.stock || 0), 0);
+
+  if (elProd) elProd.textContent = String(productos.length);
+  if (elStock) elStock.textContent = String(totalStock);
+  if (elValor) elValor.textContent = `S/ ${valorTotal.toFixed(2)}`;
+  if (elPedidos) elPedidos.textContent = String(pedidos.length);
 }
 
-function crearCelda(texto: string | number | undefined | null): HTMLTableCellElement {
-    const td = document.createElement("td");
-    td.textContent = String(texto ?? "");
-    return td;
-}
+// Renderizado del catálogo de productos
+function renderizarProductos(): void {
+  const grid = document.getElementById('grid-productos');
+  const inputBuscar = document.getElementById('input-buscar') as HTMLInputElement | null;
+  if (!grid) return;
 
-function renderizarTabla(): void {
-    const termino = buscar.value.trim().toLowerCase();
-    const filtrados = productos.filter(p =>
-        (p.nombre || "").toLowerCase().includes(termino) ||
-        (p.codigo || "").toLowerCase().includes(termino) ||
-        (p.marca || "").toLowerCase().includes(termino)
-    );
+  const termino = (inputBuscar?.value || '').toLowerCase().trim();
 
-    tabla.replaceChildren();
+  const filtrados = productos.filter((p) => {
+    const coincideCat = categoriaSeleccionada === 'Todas' || p.categoria === categoriaSeleccionada;
+    const coincideTexto =
+      p.nombre.toLowerCase().includes(termino) ||
+      p.codigo.toLowerCase().includes(termino) ||
+      p.categoria.toLowerCase().includes(termino);
+    return coincideCat && coincideTexto;
+  });
 
-    if (filtrados.length === 0) {
-        const fila = document.createElement("tr");
-        const celda = crearCelda("No se encontraron productos.");
-        celda.colSpan = 12;
-        fila.appendChild(celda);
-        tabla.appendChild(fila);
-    }
+  if (filtrados.length === 0) {
+    grid.innerHTML = `<p style="color:#94a3b8;">No se encontraron componentes con ese filtro.</p>`;
+    return;
+  }
 
-    for (const p of filtrados) {
-        const fila = document.createElement("tr");
-        fila.appendChild(crearCelda(p.id));
+  grid.innerHTML = filtrados
+    .map(
+      (p) => `
+      <article class="product-card">
+        <div>
+          <div class="card-top">
+            <span class="sku-tag">${p.codigo}</span>
+            <span class="stock-tag ${p.stock <= 5 ? 'low' : ''}">Stock: ${p.stock}</span>
+          </div>
+          <h3 class="product-title">${p.nombre}</h3>
+          <span class="product-cat">${p.categoria}</span>
+        </div>
+        <div>
+          <div class="product-price">S/ ${Number(p.precio).toFixed(2)}</div>
+          <div class="card-actions">
+            <button class="btn btn-primary" data-add="${p.id}">+ Carrito</button>
+            <button class="btn btn-outline" data-edit="${p.id}">✏️</button>
+            <button class="btn btn-danger" data-del="${p.id}">🗑️</button>
+          </div>
+        </div>
+      </article>
+    `
+    )
+    .join('');
 
-        const tdImagen = document.createElement("td");
-        if (p.imagen) {
-            try {
-                const url = new URL(p.imagen);
-                if (url.protocol === "https:" || url.protocol === "http:") {
-                    const img = document.createElement("img");
-                    img.className = "product-img";
-                    img.src = url.href;
-                    img.alt = p.nombre || "Producto";
-                    img.loading = "lazy";
-                    img.onerror = () => img.remove();
-                    tdImagen.appendChild(img);
-                }
-            } catch {}
-        }
-        fila.appendChild(tdImagen);
-
-        fila.appendChild(crearCelda(p.codigo));
-        fila.appendChild(crearCelda(p.nombre));
-        fila.appendChild(crearCelda(p.categoria));
-        fila.appendChild(crearCelda(p.marca));
-        fila.appendChild(crearCelda(p.modelo));
-        fila.appendChild(crearCelda(p.garantia));
-        fila.appendChild(crearCelda(`S/ ${Number(p.precio).toFixed(2)}`));
-        fila.appendChild(crearCelda(p.stock));
-        fila.appendChild(crearCelda(`${p.descuento ?? 0}%`));
-
-        const acciones = document.createElement("td");
-
-        const editar = document.createElement("button");
-        editar.type = "button";
-        editar.className = "small";
-        editar.textContent = "Editar";
-        editar.addEventListener("click", () => editarProducto(p.id));
-
-        const eliminar = document.createElement("button");
-        eliminar.type = "button";
-        eliminar.className = "small danger";
-        eliminar.style.marginLeft = "6px";
-        eliminar.textContent = "Eliminar";
-        eliminar.addEventListener("click", () => eliminarProducto(p.id));
-
-        acciones.append(editar, eliminar);
-        fila.appendChild(acciones);
-        tabla.appendChild(fila);
-    }
-
-    contador.textContent = `${filtrados.length} de ${productos.length} productos`;
-}
-
-// Usa el producto ya cargado; la API no expone GET /api/productos/{id}.
-async function editarProducto(id: number): Promise<void> {
-    limpiarMensaje();
-    const p = productos.find(producto => producto.id === id);
-    if (!p) {
-        mostrarMensaje("No se encontró el producto en la lista. Actualiza el inventario e inténtalo de nuevo.", "error");
-        return;
-    }
-
-    const campos = [
-        "Codigo", "Nombre", "Categoria", "Marca", "Modelo",
-        "Garantia", "Precio", "Stock", "Descuento", "Imagen", "Descripcion"
-    ];
-
-    for (const campo of campos) {
-        const prop = campo.charAt(0).toLowerCase() + campo.slice(1);
-        const elemento = form.elements.namedItem(campo) as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement | null;
-        if (elemento) {
-            elemento.value = String(p[prop as keyof Producto] ?? "");
-        }
-    }
-
-    idEdicion = id;
-    tituloFormulario.textContent = `Editar producto #${id}`;
-    btnGuardar.textContent = "Guardar cambios";
-    btnCancelar.hidden = false;
-    form.scrollIntoView({ behavior: "smooth", block: "start" });
-}
-
-// POST para registrar; PUT para actualizar
-form.addEventListener("submit", async (evento: SubmitEvent) => {
-    evento.preventDefault();
-    limpiarMensaje();
-
-    const formData = new FormData(form);
-    const datos: Record<string, any> = {};
-
-    formData.forEach((valor, clave) => {
-        datos[clave] = valor;
+  // Eventos de los botones de cada tarjeta
+  grid.querySelectorAll('[data-add]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const id = Number((btn as HTMLElement).getAttribute('data-add'));
+      agregarAlCarrito(id);
     });
+  });
 
-    for (const campo of ["Precio", "Stock", "Descuento"]) {
-        const valor = Number(datos[campo]);
-        datos[campo] = Number.isFinite(valor) ? valor : 0;
-    }
+  grid.querySelectorAll('[data-edit]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const id = Number((btn as HTMLElement).getAttribute('data-edit'));
+      cargarProductoEnFormulario(id);
+    });
+  });
 
-    if (!String(datos.Codigo || "").trim() || !String(datos.Nombre || "").trim()) {
-        mostrarMensaje("Completa el código y el nombre.", "error");
-        return;
-    }
-
-    const precio = Number(datos.Precio);
-    const stock = Number(datos.Stock);
-    const descuento = Number(datos.Descuento);
-
-    if (
-        !Number.isFinite(precio) || precio < 0 ||
-        !Number.isFinite(stock) || stock < 0 ||
-        !Number.isInteger(stock) ||
-        !Number.isFinite(descuento) || descuento < 0 ||
-        descuento > 100
-    ) {
-        mostrarMensaje("Revisa el precio, el stock entero y el descuento (0-100).", "error");
-        return;
-    }
-
-    const editando = idEdicion !== null;
-    const url = editando ? `${API_URL}/${idEdicion}` : API_URL;
-
-    btnGuardar.disabled = true;
-    try {
-        await solicitar(url, {
-            method: editando ? "PUT" : "POST",
-            body: JSON.stringify(datos)
-        });
-
-        form.reset();
-        cancelarEdicion();
-        const listaActualizada = await cargarProductos();
-        mostrarMensaje(
-            listaActualizada
-                ? (editando
-                    ? "Producto actualizado correctamente."
-                    : "Producto registrado correctamente.")
-                : "El cambio se guardó, pero no se pudo actualizar la lista. Usa «Actualizar lista» para volver a intentarlo.",
-            listaActualizada ? "ok" : "error"
-        );
-    } catch (error: any) {
-        mostrarMensaje(error.message, "error");
-    } finally {
-        btnGuardar.disabled = false;
-    }
-});
-
-// DELETE: Eliminar un producto
-async function eliminarProducto(id: number): Promise<void> {
-    const p = productos.find(x => x.id === id);
-    if (!confirm(`¿Deseas eliminar "${p?.nombre || "este producto"}" (ID ${id})?`)) return;
-
-    limpiarMensaje();
-    try {
-        await solicitar(`${API_URL}/${id}`, { method: "DELETE" });
-        const listaActualizada = await cargarProductos();
-        mostrarMensaje(
-            listaActualizada
-                ? "Producto eliminado correctamente."
-                : "El producto se eliminó, pero no se pudo actualizar la lista. Usa «Actualizar lista» para volver a intentarlo.",
-            listaActualizada ? "ok" : "error"
-        );
-    } catch (error: any) {
-        mostrarMensaje(error.message, "error");
-    }
+  grid.querySelectorAll('[data-del]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const id = Number((btn as HTMLElement).getAttribute('data-del'));
+      eliminarProducto(id);
+    });
+  });
 }
 
-function cancelarEdicion(): void {
-    idEdicion = null;
-    form.reset();
-    tituloFormulario.textContent = "Registrar nuevo producto";
-    btnGuardar.textContent = "Registrar producto";
-    btnCancelar.hidden = true;
+// CRUD de Productos
+function cargarProductoEnFormulario(id: number): void {
+  const prod = productos.find((p) => p.id === id);
+  if (!prod) return;
+
+  (document.getElementById('prod-id') as HTMLInputElement).value = String(prod.id);
+  (document.getElementById('prod-codigo') as HTMLInputElement).value = prod.codigo;
+  (document.getElementById('prod-nombre') as HTMLInputElement).value = prod.nombre;
+  (document.getElementById('prod-categoria') as HTMLSelectElement).value = prod.categoria;
+  (document.getElementById('prod-precio') as HTMLInputElement).value = String(prod.precio);
+  (document.getElementById('prod-stock') as HTMLInputElement).value = String(prod.stock);
+
+  const titulo = document.getElementById('form-titulo');
+  const btnCancelar = document.getElementById('btn-cancelar-edicion');
+  if (titulo) titulo.textContent = 'Editar Componente';
+  if (btnCancelar) btnCancelar.style.display = 'block';
 }
 
-btnCancelar.addEventListener("click", cancelarEdicion);
-form.addEventListener("reset", () => {
-    setTimeout(() => {
-        if (idEdicion !== null) cancelarEdicion();
-    }, 0);
-});
-buscar.addEventListener("input", renderizarTabla);
-document.getElementById("btnRecargar")?.addEventListener("click", cargarProductos);
+function limpiarFormulario(): void {
+  const form = document.getElementById('form-producto') as HTMLFormElement | null;
+  form?.reset();
+  (document.getElementById('prod-id') as HTMLInputElement).value = '';
+  const titulo = document.getElementById('form-titulo');
+  const btnCancelar = document.getElementById('btn-cancelar-edicion');
+  if (titulo) titulo.textContent = 'Registrar Componente';
+  if (btnCancelar) btnCancelar.style.display = 'none';
+}
 
-cargarProductos();
+async function guardarProducto(e: Event): Promise<void> {
+  e.preventDefault();
+  const idStr = (document.getElementById('prod-id') as HTMLInputElement).value;
+  const nuevo: Producto = {
+    id: idStr ? Number(idStr) : Date.now(),
+    codigo: (document.getElementById('prod-codigo') as HTMLInputElement).value.trim(),
+    nombre: (document.getElementById('prod-nombre') as HTMLInputElement).value.trim(),
+    categoria: (document.getElementById('prod-categoria') as HTMLSelectElement).value,
+    precio: Number((document.getElementById('prod-precio') as HTMLInputElement).value),
+    stock: Number((document.getElementById('prod-stock') as HTMLInputElement).value)
+  };
+
+  if (idStr) {
+    productos = productos.map((p) => (p.id === nuevo.id ? nuevo : p));
+    mostrarToast(`Componente ${nuevo.codigo} actualizado.`);
+  } else {
+    productos.unshift(nuevo);
+    mostrarToast(`Componente ${nuevo.codigo} registrado en catálogo.`);
+  }
+
+  guardarCacheLocal();
+  actualizarKPIs();
+  renderizarProductos();
+  limpiarFormulario();
+
+  // Envío asíncrono al backend en Render si está en línea
+  try {
+    await fetch(`${API_BASE_URL}/api/productos`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(nuevo)
+    });
+  } catch {
+    // Guardado garantizado localmente en modo offline
+  }
+}
+
+function eliminarProducto(id: number): void {
+  productos = productos.filter((p) => p.id !== id);
+  guardarCacheLocal();
+  actualizarKPIs();
+  renderizarProductos();
+  mostrarToast('Componente eliminado del inventario.');
+}
+
+// Gestión del Carrito y Pedidos
+function agregarAlCarrito(id: number): void {
+  const prod = productos.find((p) => p.id === id);
+  if (!prod) return;
+
+  const existente = carrito.find((item) => item.producto.id === id);
+  if (existente) {
+    existente.cantidad += 1;
+  } else {
+    carrito.push({ producto: prod, cantidad: 1 });
+  }
+
+  guardarCacheLocal();
+  renderizarCarrito();
+  mostrarToast(`${prod.nombre} agregado al carrito.`);
+}
+
+function renderizarCarrito(): void {
+  const contenedor = document.getElementById('carrito-items');
+  const contador = document.getElementById('carrito-contador');
+  const totalEl = document.getElementById('carrito-total');
+
+  const totalItems = carrito.reduce((acc, i) => acc + i.cantidad, 0);
+  const montoTotal = carrito.reduce((acc, i) => acc + i.producto.precio * i.cantidad, 0);
+
+  if (contador) contador.textContent = String(totalItems);
+  if (totalEl) totalEl.textContent = `S/ ${montoTotal.toFixed(2)}`;
+  if (!contenedor) return;
+
+  if (carrito.length === 0) {
+    contenedor.innerHTML = `<p style="color:#94a3b8;">Tu carrito está vacío.</p>`;
+    return;
+  }
+
+  contenedor.innerHTML = carrito
+    .map(
+      (item) => `
+      <div class="cart-item">
+        <div>
+          <strong>${item.producto.nombre}</strong>
+          <div style="font-size:0.78rem; color:#94a3b8;">
+            ${item.cantidad} x S/ ${item.producto.precio.toFixed(2)}
+          </div>
+        </div>
+        <strong>S/ ${(item.cantidad * item.producto.precio).toFixed(2)}</strong>
+      </div>
+    `
+    )
+    .join('');
+}
+
+function procesarPedido(): void {
+  if (carrito.length === 0) {
+    mostrarToast('Agrega al menos un componente al carrito.');
+    return;
+  }
+
+  const inputCliente = document.getElementById('cliente-nombre') as HTMLInputElement | null;
+  const cliente = inputCliente?.value.trim() || 'Cliente General TecnoMarket';
+  const total = carrito.reduce((acc, i) => acc + i.producto.precio * i.cantidad, 0);
+
+  const nuevoPedido: Pedido = {
+    id: Date.now(),
+    cliente,
+    total,
+    fecha: new Date().toLocaleString(),
+    estado: navigator.onLine ? 'Sincronizado Render/Cloud' : 'Guardado Offline (Pendiente)'
+  };
+
+  pedidos.unshift(nuevoPedido);
+  carrito = [];
+  guardarCacheLocal();
+  renderizarCarrito();
+  renderizarPedidos();
+  actualizarKPIs();
+
+  document.getElementById('modal-carrito')?.classList.remove('open');
+  mostrarToast(`Pedido #${nuevoPedido.id.toString().slice(-4)} emitido correctamente.`);
+}
+
+function renderizarPromociones(): void {
+  const grid = document.getElementById('grid-promociones');
+  if (!grid) return;
+  grid.innerHTML = promociones
+    .map(
+      (pr) => `
+      <article class="promo-card">
+        <span class="promo-discount">-${pr.descuentoPorcentaje}% OFF</span>
+        <h3>${pr.titulo}</h3>
+        <p style="color:#94a3b8; font-size:0.88rem; margin-top:0.4rem;">${pr.descripcion}</p>
+      </article>
+    `
+    )
+    .join('');
+}
+
+function renderizarPedidos(): void {
+  const lista = document.getElementById('lista-pedidos');
+  if (!lista) return;
+  if (pedidos.length === 0) {
+    lista.innerHTML = `<p style="color:#94a3b8;">Aún no hay pedidos registrados.</p>`;
+    return;
+  }
+  lista.innerHTML = pedidos
+    .map(
+      (pe) => `
+      <div class="order-item">
+        <div>
+          <strong>Pedido #${pe.id.toString().slice(-5)} - ${pe.cliente}</strong>
+          <div style="font-size:0.78rem; color:#94a3b8;">${pe.fecha} · ${pe.estado}</div>
+        </div>
+        <strong style="color:#38bdf8; font-size:1.1rem;">S/ ${pe.total.toFixed(2)}</strong>
+      </div>
+    `
+    )
+    .join('');
+}
+
+// ============================================================================
+// CONFIGURACIÓN PWA: SERVICE WORKER E INSTALADOR DE ESCRITORIO
+// ============================================================================
+function configurarPWA(): void {
+  const btnInstalar = document.getElementById('btn-instalar-pwa') as HTMLButtonElement | null;
+  const diagSw = document.getElementById('diag-sw');
+  const diagDisplay = document.getElementById('diag-display');
+  const badgeConexion = document.getElementById('conexion-badge');
+  const textoConexion = document.getElementById('conexion-texto');
+  const fbEstado = document.getElementById('firebase-estado');
+
+  if (fbEstado) {
+    fbEstado.textContent = firebaseConfig.projectId;
+  }
+
+  // Detectar si ya corre como aplicación de escritorio instalada (Standalone)
+  const esStandalone = window.matchMedia('(display-mode: standalone)').matches;
+  if (diagDisplay) {
+    diagDisplay.textContent = esStandalone ? 'App de Escritorio (Standalone)' : 'Navegador Web';
+  }
+
+  // 1. Registro del Service Worker
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', async () => {
+      try {
+        const reg = await navigator.serviceWorker.register('./service-worker.js');
+        if (diagSw) diagSw.textContent = 'Activo (Cache ON)';
+        console.log('[PWA] Service Worker activo:', reg.scope);
+      } catch (err) {
+        if (diagSw) diagSw.textContent = 'Error en SW';
+        console.error('[PWA] Error registrando SW:', err);
+      }
+    });
+  }
+
+  // 2. Capturar el evento beforeinstallprompt para habilitar el instalador
+  window.addEventListener('beforeinstallprompt', (e: Event) => {
+    e.preventDefault();
+    deferredInstallPrompt = e as BeforeInstallPromptEvent;
+    if (btnInstalar) {
+      btnInstalar.style.display = 'inline-flex';
+    }
+  });
+
+  // 3. Disparar ventana nativa de instalación en escritorio
+  btnInstalar?.addEventListener('click', async () => {
+    if (!deferredInstallPrompt) return;
+    await deferredInstallPrompt.prompt();
+    const { outcome } = await deferredInstallPrompt.userChoice;
+    if (outcome === 'accepted') {
+      mostrarToast('Instalando TecnoMarket en tu escritorio...');
+    }
+    deferredInstallPrompt = null;
+    btnInstalar.style.display = 'none';
+  });
+
+  window.addEventListener('appinstalled', () => {
+    if (btnInstalar) btnInstalar.style.display = 'none';
+    if (diagDisplay) diagDisplay.textContent = 'App Instalada en Escritorio';
+    mostrarToast('¡TecnoMarket ya está instalado en tu Escritorio!');
+  });
+
+  // 4. Estado Online / Offline en vivo
+  const actualizarRed = (): void => {
+    const online = navigator.onLine;
+    if (textoConexion) textoConexion.textContent = online ? 'Online' : 'Modo Offline';
+    badgeConexion?.classList.toggle('offline', !online);
+  };
+  window.addEventListener('online', actualizarRed);
+  window.addEventListener('offline', actualizarRed);
+  actualizarRed();
+}
+
+// Inicialización general
+function inicializarApp(): void {
+  cargarCacheLocal();
+  actualizarKPIs();
+  renderizarProductos();
+  renderizarPromociones();
+  renderizarPedidos();
+  renderizarCarrito();
+  configurarPWA();
+  sincronizarConBackend();
+
+  // Eventos de interfaz
+  document.getElementById('form-producto')?.addEventListener('submit', guardarProducto);
+  document.getElementById('btn-cancelar-edicion')?.addEventListener('click', limpiarFormulario);
+  document.getElementById('input-buscar')?.addEventListener('input', renderizarProductos);
+  document.getElementById('btn-sincronizar')?.addEventListener('click', () => {
+    mostrarToast('Sincronizando catálogo con Render...');
+    sincronizarConBackend();
+  });
+
+  // Filtro de categorías por chips
+  document.querySelectorAll('#contenedor-categorias .chip').forEach((chip) => {
+    chip.addEventListener('click', () => {
+      document.querySelectorAll('#contenedor-categorias .chip').forEach((c) => c.classList.remove('active'));
+      chip.classList.add('active');
+      categoriaSeleccionada = chip.getAttribute('data-cat') || 'Todas';
+      renderizarProductos();
+    });
+  });
+
+  // Cambio de pestañas (Catálogo / Promociones / Pedidos)
+  document.querySelectorAll('.view-tabs .tab-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.view-tabs .tab-btn').forEach((b) => b.classList.remove('active'));
+      document.querySelectorAll('.view-section').forEach((s) => s.classList.remove('active'));
+      btn.classList.add('active');
+      const targetId = btn.getAttribute('data-tab');
+      if (targetId) document.getElementById(targetId)?.classList.add('active');
+    });
+  });
+
+  // Abrir / Cerrar Carrito
+  document.getElementById('btn-abrir-carrito')?.addEventListener('click', () => {
+    document.getElementById('modal-carrito')?.classList.add('open');
+  });
+  document.getElementById('btn-cerrar-carrito')?.addEventListener('click', () => {
+    document.getElementById('modal-carrito')?.classList.remove('open');
+  });
+  document.getElementById('btn-vaciar-carrito')?.addEventListener('click', () => {
+    carrito = [];
+    guardarCacheLocal();
+    renderizarCarrito();
+  });
+  document.getElementById('btn-procesar-pedido')?.addEventListener('click', procesarPedido);
+}
+
+document.addEventListener('DOMContentLoaded', inicializarApp);

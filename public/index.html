@@ -1,145 +1,237 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TecnoMarket | Gestión de Inventario CRUD</title>
-    <link rel="stylesheet" href="styles.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="TecnoMarket - Plataforma Multiplataforma de Hardware y Componentes con soporte PWA, Render API y Firebase." />
+  <meta name="theme-color" content="#0ea5e9" />
+  <title>TecnoMarket Pro | Hardware & Cloud PWA</title>
+
+  <!-- Configuración PWA -->
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="apple-touch-icon" href="./icons/icon-192.png" />
+  <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
-    <header>
-        <h1>TecnoMarket — Gestión de Productos Tecnológicos</h1>
-        <p>Aplicación web conectada a una API REST desarrollada con ASP.NET Core (.NET 10)</p>
-    </header>
+  <!-- Barra Superior estilo App de Escritorio / Dashboard -->
+  <header class="topbar">
+    <div class="topbar-brand">
+      <div class="brand-logo" aria-hidden="true">⚡</div>
+      <div>
+        <div class="brand-title-row">
+          <h1>TecnoMarket</h1>
+          <span class="brand-tag">PWA Desktop v2.0</span>
+        </div>
+        <p class="brand-subtitle">Arquitectura Híbrida .NET 10 Render + Firebase Cloud</p>
+      </div>
+    </div>
 
-    <main>
-        <div id="mensaje" role="status" aria-live="polite"></div>
+    <div class="topbar-status">
+      <div class="status-pill" id="conexion-badge" title="Estado de red del dispositivo">
+        <span class="status-dot"></span>
+        <span id="conexion-texto">Online</span>
+      </div>
+      <div class="status-pill status-api" id="api-badge" title="Estado del Backend en Render">
+        <span>API Render: <strong id="api-latencia">Conectando...</strong></span>
+      </div>
+      <div class="status-pill status-firebase" id="firebase-badge" title="Estado de Cloud Firestore">
+        <span>Firestore: <strong id="firebase-estado">Listo</strong></span>
+      </div>
+    </div>
 
-        <section class="panel">
-            <h2 id="tituloFormulario">Registrar nuevo producto</h2>
-            <form id="formProducto">
-                <div class="form-grid">
-                    <div class="field">
-                        <label for="Codigo">Código *</label>
-                        <input id="Codigo" name="Codigo" required maxlength="40" placeholder="Ej. GPU003">
-                    </div>
+    <div class="topbar-actions">
+      <button id="btn-instalar-pwa" class="btn btn-install" type="button" style="display: none;">
+        📲 Instalar App en Escritorio
+      </button>
+      <button id="btn-sincronizar" class="btn btn-outline" type="button" title="Sincronizar con Render y Caché">
+        🔄 Sincronizar
+      </button>
+      <button id="btn-abrir-carrito" class="btn btn-primary" type="button">
+        🛒 Carrito <span id="carrito-contador" class="counter-badge">0</span>
+      </button>
+    </div>
+  </header>
 
-                    <div class="field">
-                        <label for="Nombre">Nombre *</label>
-                        <input id="Nombre" name="Nombre" required maxlength="150" placeholder="Ej. Tarjeta Gráfica RTX 4080">
-                    </div>
+  <!-- Contenedor Principal -->
+  <main class="dashboard-shell">
+    <!-- Cinta de Indicadores KPI (Inspirado en panel de gestión del docente, con diseño propio) -->
+    <section class="kpi-strip" aria-label="Indicadores del sistema">
+      <article class="kpi-card">
+        <span class="kpi-label">Productos en Catálogo</span>
+        <strong class="kpi-value" id="kpi-total-productos">0</strong>
+        <span class="kpi-foot" id="kpi-categorias-activas">4 categorías activas</span>
+      </article>
+      <article class="kpi-card">
+        <span class="kpi-label">Unidades en Stock</span>
+        <strong class="kpi-value" id="kpi-total-stock">0</strong>
+        <span class="kpi-foot">Inventario disponible</span>
+      </article>
+      <article class="kpi-card">
+        <span class="kpi-label">Valorización de Inventario</span>
+        <strong class="kpi-value" id="kpi-valor-inventario">S/ 0.00</strong>
+        <span class="kpi-foot">Moneda local (PEN)</span>
+      </article>
+      <article class="kpi-card">
+        <span class="kpi-label">Pedidos Registrados</span>
+        <strong class="kpi-value" id="kpi-total-pedidos">0</strong>
+        <span class="kpi-foot" id="kpi-modo-almacenamiento">Persistencia Híbrida</span>
+      </article>
+    </section>
 
-                    <div class="field">
-                        <label for="Categoria">Categoría</label>
-                        <select id="Categoria" name="Categoria">
-                            <option value="">Seleccionar</option>
-                            <option>Tarjetas Gráficas</option>
-                            <option>Procesadores</option>
-                            <option>Laptops</option>
-                            <option>Monitores</option>
-                            <option>Periféricos</option>
-                            <option>Almacenamiento</option>
-                            <option>Memorias RAM</option>
-                            <option>Placas Madre</option>
-                            <option>Audio</option>
-                            <option>Fuentes de Poder</option>
-                            <option>Refrigeración</option>
-                            <option>Gabinetes</option>
-                            <option>Redes</option>
-                            <option>Mobiliario</option>
-                        </select>
-                    </div>
+    <!-- Navegación de Vistas (Tabs) -->
+    <nav class="view-tabs" aria-label="Secciones de TecnoMarket">
+      <button class="tab-btn active" data-tab="vista-catalogo" type="button">🖥️ Catálogo & Inventario</button>
+      <button class="tab-btn" data-tab="vista-promociones" type="button">🔥 Promociones</button>
+      <button class="tab-btn" data-tab="vista-pedidos" type="button">📦 Historial de Pedidos</button>
+    </nav>
 
-                    <div class="field">
-                        <label for="Marca">Marca</label>
-                        <input id="Marca" name="Marca" placeholder="Ej. NVIDIA, AMD, ASUS">
-                    </div>
+    <!-- VISTA 1: CATÁLOGO E INVENTARIO (Layout de 2 columnas estilo Pro) -->
+    <section id="vista-catalogo" class="view-section active">
+      <div class="workspace-grid">
+        <!-- Columna Izquierda: Formulario CRUD de Hardware + Estado Cloud -->
+        <aside class="panel panel-form">
+          <div class="panel-header">
+            <h2 id="form-titulo">Registrar Componente</h2>
+            <span class="panel-badge">CRUD API / Local</span>
+          </div>
 
-                    <div class="field">
-                        <label for="Modelo">Modelo</label>
-                        <input id="Modelo" name="Modelo" placeholder="Ej. ROG Strix 16GB">
-                    </div>
+          <form id="form-producto" class="tech-form">
+            <input type="hidden" id="prod-id" />
 
-                    <div class="field">
-                        <label for="Garantia">Garantía</label>
-                        <select id="Garantia" name="Garantia">
-                            <option value="">Seleccionar</option>
-                            <option>6 meses</option>
-                            <option>12 meses</option>
-                            <option>24 meses</option>
-                            <option>36 meses</option>
-                        </select>
-                    </div>
-
-                    <div class="field">
-                        <label for="Precio">Precio (S/) *</label>
-                        <input id="Precio" name="Precio" type="number" min="0" step="0.01" required value="0">
-                    </div>
-
-                    <div class="field">
-                        <label for="Stock">Stock *</label>
-                        <input id="Stock" name="Stock" type="number" min="0" step="1" required value="0">
-                    </div>
-
-                    <div class="field">
-                        <label for="Descuento">Descuento (%)</label>
-                        <input id="Descuento" name="Descuento" type="number" min="0" max="100" step="0.01" value="0">
-                    </div>
-
-                    <div class="field wide">
-                        <label for="Imagen">URL de imagen</label>
-                        <input id="Imagen" name="Imagen" type="url" placeholder="https://images.unsplash.com/...">
-                    </div>
-
-                    <div class="field full">
-                        <label for="Descripcion">Descripción</label>
-                        <textarea id="Descripcion" name="Descripcion" rows="2" placeholder="Especificaciones técnicas del producto..."></textarea>
-                    </div>
-                </div>
-
-                <div class="actions">
-                    <button id="btnGuardar" type="submit">Registrar producto</button>
-                    <button id="btnCancelar" class="secondary" type="button" hidden>Cancelar edición</button>
-                    <button class="secondary" type="reset">Limpiar formulario</button>
-                </div>
-            </form>
-        </section>
-
-        <section class="panel">
-            <h2>Inventario de productos tecnológicos</h2>
-            <div class="toolbar">
-                <input id="buscar" type="search" placeholder="Buscar por nombre, código o marca...">
-                <button id="btnRecargar" type="button">Actualizar lista</button>
-                <span id="contador">Cargando...</span>
+            <div class="form-group">
+              <label for="prod-codigo">Código SKU</label>
+              <input type="text" id="prod-codigo" placeholder="Ej. GPU-RTX4070" required />
             </div>
-            <p id="estadoCarga" class="status"></p>
 
-            <div class="table-wrap">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Imagen</th>
-                            <th>Código</th>
-                            <th>Nombre</th>
-                            <th>Categoría</th>
-                            <th>Marca</th>
-                            <th>Modelo</th>
-                            <th>Garantía</th>
-                            <th>Precio</th>
-                            <th>Stock</th>
-                            <th>Descuento</th>
-                            <th>Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tablaProductos">
-                        <tr><td colspan="12">Cargando productos...</td></tr>
-                    </tbody>
-                </table>
+            <div class="form-group">
+              <label for="prod-nombre">Nombre del Componente</label>
+              <input type="text" id="prod-nombre" placeholder="Ej. NVIDIA GeForce RTX 4070 Super" required />
             </div>
-        </section>
-    </main>
 
-    <script type="module" src="./dist/app.js"></script>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="prod-categoria">Categoría</label>
+                <select id="prod-categoria" required>
+                  <option value="Procesadores">Procesadores</option>
+                  <option value="Tarjetas Gráficas">Tarjetas Gráficas</option>
+                  <option value="Almacenamiento">Almacenamiento</option>
+                  <option value="Periféricos">Periféricos</option>
+                  <option value="Laptops">Laptops</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="prod-stock">Stock</label>
+                <input type="number" id="prod-stock" min="0" value="10" required />
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="prod-precio">Precio Unitario (S/)</label>
+              <input type="number" id="prod-precio" min="1" step="0.01" placeholder="Ej. 2850.00" required />
+            </div>
+
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary btn-block" id="btn-guardar-prod">
+                💾 Guardar Componente
+              </button>
+              <button type="button" class="btn btn-ghost btn-block" id="btn-cancelar-edicion" style="display: none;">
+                Cancelar edición
+              </button>
+            </div>
+          </form>
+
+          <!-- Bloque de Diagnóstico PWA & Firebase -->
+          <div class="cloud-box">
+            <h3>Diagnóstico de Plataforma</h3>
+            <ul class="cloud-list">
+              <li><span>Service Worker:</span> <strong id="diag-sw">Verificando...</strong></li>
+              <li><span>Modo de pantalla:</span> <strong id="diag-display">Navegador Web</strong></li>
+              <li><span>Última sincronización:</span> <strong id="diag-sync">--:--:--</strong></li>
+            </ul>
+          </div>
+        </aside>
+
+        <!-- Columna Derecha: Filtros y Tarjetas de Productos -->
+        <div class="panel panel-catalog">
+          <div class="catalog-toolbar">
+            <div class="search-box">
+              <input
+                type="search"
+                id="input-buscar"
+                placeholder="🔍 Buscar por nombre, código SKU o categoría..."
+                aria-label="Buscar componentes"
+              />
+            </div>
+            <div class="category-chips" id="contenedor-categorias">
+              <button class="chip active" data-cat="Todas" type="button">Todas</button>
+              <button class="chip" data-cat="Procesadores" type="button">Procesadores</button>
+              <button class="chip" data-cat="Tarjetas Gráficas" type="button">Tarjetas Gráficas</button>
+              <button class="chip" data-cat="Almacenamiento" type="button">Almacenamiento</button>
+              <button class="chip" data-cat="Periféricos" type="button">Periféricos</button>
+              <button class="chip" data-cat="Laptops" type="button">Laptops</button>
+            </div>
+          </div>
+
+          <!-- Grid de Productos -->
+          <div id="grid-productos" class="products-grid" aria-live="polite"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- VISTA 2: PROMOCIONES -->
+    <section id="vista-promociones" class="view-section">
+      <div class="panel">
+        <div class="panel-header">
+          <h2>Campañas y Promociones Activas</h2>
+          <span class="panel-badge">Endpoint /api/promociones</span>
+        </div>
+        <div id="grid-promociones" class="promo-grid"></div>
+      </div>
+    </section>
+
+    <!-- VISTA 3: PEDIDOS -->
+    <section id="vista-pedidos" class="view-section">
+      <div class="panel">
+        <div class="panel-header">
+          <h2>Registro de Pedidos Emitidos</h2>
+          <span class="panel-badge">Endpoint /api/pedidos & LocalCache</span>
+        </div>
+        <div id="lista-pedidos" class="orders-list"></div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Drawer Lateral del Carrito de Compras -->
+  <div id="modal-carrito" class="drawer-backdrop" aria-hidden="true">
+    <aside class="drawer-panel" aria-labelledby="carrito-titulo">
+      <div class="drawer-header">
+        <h2 id="carrito-titulo">🛒 Carrito de Compra</h2>
+        <button id="btn-cerrar-carrito" class="btn-icon" type="button" aria-label="Cerrar carrito">✕</button>
+      </div>
+
+      <div id="carrito-items" class="drawer-body"></div>
+
+      <div class="drawer-footer">
+        <div class="form-group">
+          <label for="cliente-nombre">Nombre del Cliente / Empresa</label>
+          <input type="text" id="cliente-nombre" placeholder="Ej. Junior Poma - Lab Sistemas" />
+        </div>
+        <div class="total-row">
+          <span>Total a Pagar:</span>
+          <strong id="carrito-total">S/ 0.00</strong>
+        </div>
+        <div class="drawer-actions">
+          <button id="btn-vaciar-carrito" class="btn btn-outline" type="button">Vaciar</button>
+          <button id="btn-procesar-pedido" class="btn btn-primary" type="button">✅ Emitir Pedido</button>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- Contenedor de Notificaciones Toast -->
+  <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+  <script src="./dist/app.js"></script>
 </body>
 </html>

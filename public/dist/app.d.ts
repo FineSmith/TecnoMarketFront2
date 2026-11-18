@@ -1,36 +1,65 @@
+declare const API_BASE_URL = "https://tecnomarket-vy27.onrender.com";
+declare const FIREBASE_CONFIG: {
+    projectId: string;
+    apiKey: string;
+    authDomain: string;
+};
 interface Producto {
     id: number;
     codigo: string;
     nombre: string;
     categoria: string;
-    marca: string;
-    modelo: string;
-    garantia: string;
     precio: number;
     stock: number;
-    descuento: number;
-    imagen: string;
-    descripcion: string;
 }
-declare const API_URL = "https://tecnomarket-vy27.onrender.com/api/productos";
-declare const form: HTMLFormElement;
-declare const tabla: HTMLTableSectionElement;
-declare const mensaje: HTMLDivElement;
-declare const buscar: HTMLInputElement;
-declare const btnGuardar: HTMLButtonElement;
-declare const btnCancelar: HTMLButtonElement;
-declare const estadoCarga: HTMLParagraphElement;
-declare const contador: HTMLSpanElement;
-declare const tituloFormulario: HTMLHeadingElement;
+interface Promocion {
+    id: number;
+    titulo: string;
+    descripcion: string;
+    descuentoPorcentaje: number;
+}
+interface ItemCarrito {
+    producto: Producto;
+    cantidad: number;
+}
+interface Pedido {
+    id: number;
+    cliente: string;
+    total: number;
+    fecha: string;
+    estado: string;
+}
+interface BeforeInstallPromptEvent extends Event {
+    readonly platforms: string[];
+    readonly userChoice: Promise<{
+        outcome: 'accepted' | 'dismissed';
+        platform: string;
+    }>;
+    prompt(): Promise<void>;
+}
 declare let productos: Producto[];
-declare let idEdicion: number | null;
-declare function mostrarMensaje(texto: string, tipo?: "ok" | "error"): void;
-declare function limpiarMensaje(): void;
-declare function solicitar(url: string, opciones?: RequestInit): Promise<any>;
-declare function cargarProductos(): Promise<boolean>;
-declare function crearCelda(texto: string | number | undefined | null): HTMLTableCellElement;
-declare function renderizarTabla(): void;
-declare function editarProducto(id: number): Promise<void>;
-declare function eliminarProducto(id: number): Promise<void>;
-declare function cancelarEdicion(): void;
+declare let promociones: Promocion[];
+declare let pedidos: Pedido[];
+declare let carrito: ItemCarrito[];
+declare let categoriaSeleccionada: string;
+declare let deferredInstallPrompt: BeforeInstallPromptEvent | null;
+declare const SEED_PRODUCTOS: Producto[];
+declare const SEED_PROMOCIONES: Promocion[];
+declare function mostrarToast(mensaje: string): void;
+declare function guardarCacheLocal(): void;
+declare function cargarCacheLocal(): void;
+declare function sincronizarConBackend(): Promise<void>;
+declare function actualizarKPIs(): void;
+declare function renderizarProductos(): void;
+declare function cargarProductoEnFormulario(id: number): void;
+declare function limpiarFormulario(): void;
+declare function guardarProducto(e: Event): Promise<void>;
+declare function eliminarProducto(id: number): void;
+declare function agregarAlCarrito(id: number): void;
+declare function renderizarCarrito(): void;
+declare function procesarPedido(): void;
+declare function renderizarPromociones(): void;
+declare function renderizarPedidos(): void;
+declare function configurarPWA(): void;
+declare function inicializarApp(): void;
 //# sourceMappingURL=app.d.ts.map
